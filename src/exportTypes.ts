@@ -46,6 +46,9 @@ export interface ContainerOptions {
 	animationDuration?: number;
 	autoScrollEnabled?: boolean;
 	lockAxis?: 'x' | 'y';
+	childrenSelector?: string;
+	disabled?: boolean;
+	elementPaddings?: [number, number, number, number];
 	dragClass?: string;
 	dropClass?: string;
 	onDragStart?: DragStartCallback;

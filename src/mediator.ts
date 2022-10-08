@@ -141,7 +141,7 @@ function getGhostElement(wrapperElement: HTMLElement, { x, y }: Position, contai
 }
 
 function getDraggableInfo(draggableElement: HTMLElement): DraggableInfo {
-  const container = containers.filter(p => draggableElement.parentElement === p.element)[0];
+  const container = containers.find(p => p.element.contains(draggableElement))!;
   const draggableIndex = container.draggables.indexOf(draggableElement);
   const getGhostParent = container.getOptions().getGhostParent;
   const draggableRect = draggableElement.getBoundingClientRect();
@@ -172,10 +172,20 @@ function handleDropAnimation(callback: Function) {
     callback();
   }
 
-  function animateGhostToPosition({ top, left }: TopLeft, duration: number, dropClass: string | undefined) {
+  function animateGhostToPosition({ top, left }: TopLeft, duration: number, { dropClass, elementPaddings: targetPad }: ContainerOptions) {
     Utils.addClass(ghostInfo.ghost, 'animated');
     if (dropClass) {
       Utils.addClass(ghostInfo.ghost.firstElementChild, dropClass);
+    }
+
+    const sourcePad = draggableInfo.container.getOptions().elementPaddings;
+    if (sourcePad) {
+      left -= sourcePad[3];
+      top -= sourcePad[0];
+    }
+    if (targetPad) {
+      left += targetPad[3];
+      top += targetPad[0];
     }
 
     ghostInfo.topLeft.x = left;
@@ -193,11 +203,8 @@ function handleDropAnimation(callback: Function) {
   }
 
   function disappearAnimation(duration: number, clb: Function) {
-    Utils.addClass(ghostInfo.ghost, 'animated');
-    translateGhost(duration, 0.9, true);
-    // ghostInfo.ghost.style.transitionDuration = duration + 'ms';
-    // ghostInfo.ghost.style.opacity = '0';
-    // ghostInfo.ghost.style.transform = 'scale(0.90)';
+    Utils.addClass(ghostInfo.ghost, 'animated-disappear');
+    translateGhost(duration, true);
     setTimeout(function () {
       clb();
     }, duration + 20);
@@ -210,7 +217,7 @@ function handleDropAnimation(callback: Function) {
       animateGhostToPosition(
         dragResult.shadowBeginEnd.rect!,
         Math.max(150, container.getOptions().animationDuration! / 2),
-        container.getOptions().dropClass
+        container.getOptions()
       );
     } else {
       endDrop();
@@ -231,7 +238,7 @@ function handleDropAnimation(callback: Function) {
               left: rectangles.lastVisibleRect.left
             },
             container.getOptions().animationDuration!,
-            container.getOptions().dropClass
+            container.getOptions()
           );
         } else {
           const { removedIndex, elementSize } = container.getDragResult()!;
@@ -253,7 +260,7 @@ function handleDropAnimation(callback: Function) {
           animateGhostToPosition(
             layout.getTopLeftOfElementBegin(prevDraggableEnd),
             container.getOptions().animationDuration!,
-            container.getOptions().dropClass
+            container.getOptions()
           );
         }
       } else {
@@ -345,10 +352,9 @@ function onMouseDown(event: MouseEvent & TouchEvent) {
     if (grabbedElement) {
       const containerElement = Utils.getParent(grabbedElement, '.' + constants.containerClass);
       const container = containers.filter(p => p.element === containerElement)[0];
-      const dragHandleSelector = container.getOptions().dragHandleSelector;
-      const nonDragAreaSelector = container.getOptions().nonDragAreaSelector;
+      const { dragHandleSelector, nonDragAreaSelector, disabled } = container.getOptions();
 
-      let startDrag = true;
+      let startDrag = !disabled;
       if (dragHandleSelector && !Utils.getParent(e.target as Element, dragHandleSelector)) {
         startDrag = false;
       }
@@ -578,7 +584,7 @@ function fireOnDragStartEnd(isStart: boolean) {
 function initiateDrag(position: MousePosition, cursor: string) {
   if (grabbedElement !== null) {
     isDragging = true;
-    const container = (containers.filter(p => grabbedElement!.parentElement === p.element)[0]) as IContainer;
+    const container = containers.find(p => p.element.contains(grabbedElement)) as IContainer;
     container.setDraggables();
     sourceContainerLockAxis = container.getOptions().lockAxis ? container.getOptions().lockAxis!.toLowerCase() as Axis : null;
 
@@ -615,14 +621,19 @@ function initiateDrag(position: MousePosition, cursor: string) {
 }
 
 let ghostAnimationFrame: number | null = null;
-function translateGhost(translateDuration = 0, scale = 1, fadeOut = false) {
-  const { ghost, topLeft: { x, y } } = ghostInfo;
+function translateGhost(translateDuration = 0, disappear = false) {
+  const { ghost } = ghostInfo;
+  let { topLeft: { x, y } } = ghostInfo;
   const useTransform = draggableInfo.container ? draggableInfo.container.shouldUseTransformForGhost() : true;
+
+  if (disappear) {
+    y += window.innerHeight;
+  }
 
   let transformString = useTransform ? `translate3d(${x}px,${y}px, 0)` : null;
 
-  if (scale !== 1) {
-    transformString = transformString ? `${transformString} scale(${scale})` : `scale(${scale})`;
+  if (disappear) {
+    transformString = transformString ? `${transformString} rotateZ(60deg)` : `rotateZ(60deg)`;
   }
 
   if (translateDuration > 0) {
@@ -634,7 +645,7 @@ function translateGhost(translateDuration = 0, scale = 1, fadeOut = false) {
         ghost.style.top = y + 'px';
       }
       ghostAnimationFrame = null;
-      if (fadeOut) {
+      if (disappear) {
         ghost.style.opacity = '0';
       }
     })
@@ -649,7 +660,7 @@ function translateGhost(translateDuration = 0, scale = 1, fadeOut = false) {
         ghost.style.top = y + 'px';
       }
       ghostAnimationFrame = null;
-      if (fadeOut) {
+      if (disappear) {
         ghost.style.opacity = '0';
       }
     });

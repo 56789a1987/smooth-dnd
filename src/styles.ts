@@ -44,6 +44,9 @@ const css = {
 	[`.${ghostClass}.animated`]: {
 		'transition': 'all ease-in-out'
 	},
+	[`.${ghostClass}.animated-disappear`]: {
+		'transition': 'all cubic-bezier(0.5, 0, 1, 0.5)',
+	},
 	[`.${ghostClass} *`]: {
 		'pointer-events': 'none'
 	},
@@ -82,7 +85,7 @@ const css = {
 	},
 	[`.${dropPlaceholderDefaultClass}`]: {
 		'background-color': 'rgba(150, 150, 150, 0.1)',
-  	'border': '1px solid #ccc',
+  		'border': '1px solid #ccc',
 	}
 };
 

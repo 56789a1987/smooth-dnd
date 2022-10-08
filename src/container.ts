@@ -21,6 +21,9 @@ function isDragRelevant({ element, getOptions }: ContainerProps) {
   return function (sourceContainer: IContainer, payload: any) {
     const options = getOptions();
 
+    if (options.disabled) {
+      return false;
+    }
     if (options.shouldAcceptDrop) {
       return options.shouldAcceptDrop(sourceContainer.getOptions(), payload);
     }
@@ -51,9 +54,10 @@ function wrapChild(child: HTMLElement) {
   return child;
 }
 
-function wrapChildren(element: HTMLElement) {
+function wrapChildren(element: HTMLElement, selector: string | undefined) {
   const draggables: ElementX[] = [];
-  Array.prototype.forEach.call(element.children, (child: ElementX) => {
+  const children = selector ? element.querySelectorAll(selector) : element.children;
+  Array.prototype.forEach.call(children, (child: ElementX) => {
     if (child.nodeType === Node.ELEMENT_NODE) {
       let wrapper = child;
       if (!hasClass(child, wrapperClass)) {
@@ -61,8 +65,6 @@ function wrapChildren(element: HTMLElement) {
       }
       wrapper[translationValue] = 0;
       draggables.push(wrapper);
-    } else {
-      element.removeChild(child);
     }
   });
   return draggables;
@@ -176,8 +178,8 @@ function handleDrop({ element, draggables, layout, getOptions }: ContainerProps)
 }
 
 function getContainerProps(element: HTMLElement, getOptions: () => ContainerOptions): ContainerProps {
-  const draggables = wrapChildren(element);
   const options = getOptions();
+  const draggables = wrapChildren(element, options.childrenSelector);
   // set flex classes before layout is inited for scroll listener
   addClass(element, containerClass);
   options.orientation && addClass(element, options.orientation);
@@ -239,8 +241,10 @@ function getElementSize({ layout }: ContainerProps) {
   return ({ draggableInfo, dragResult }: DragInfo) => {
     if (dragResult.pos === null) {
       return (elementSize = null);
-    } else {
-      elementSize = elementSize || layout.getSize(draggableInfo.size);
+    } else if (!elementSize) {
+      const { elementPaddings: pad, orientation } = draggableInfo.container.getOptions();
+      elementSize = layout.getSize(draggableInfo.size);
+      pad && (elementSize -= (orientation === 'horizontal' ? pad[1] + pad[3] : pad[0] + pad[2]));
     }
     return { elementSize };
   };
@@ -408,10 +412,12 @@ function handleInsertionSizeChange({ element, draggables, layout, getOptions }: 
               ? layout.getBeginEnd(draggables[draggables.length - 1]).end - draggables[draggables.length - 1][translationValue]
               : containerBeginEnd.begin;
           if (lastDraggableEnd + elementSize > containerEnd) {
-            strectherElement = window.document.createElement('div') as HTMLElement;
-            strectherElement.className = stretcherElementClass + ' ' + getOptions().orientation;
-            const stretcherSize = draggables.length > 0 ? elementSize + lastDraggableEnd - containerEnd : elementSize;
-            layout.setSize(strectherElement.style, `${stretcherSize}px`);
+            const { orientation, elementPaddings: pad } = getOptions();
+            strectherElement = window.document.createElement('div');
+            strectherElement.className = stretcherElementClass + ' ' + orientation;
+            const padding = pad ? (orientation === 'horizontal' ? pad[1] + pad[3] : pad[0] + pad[2]) : 0;
+            const stretcherSize = elementSize || (draggables.length > 0 ? elementSize + lastDraggableEnd - containerEnd : elementSize);
+            layout.setSize(strectherElement.style, `${stretcherSize + padding}px`);
             element.appendChild(strectherElement);
             element[stretcherElementInstance] = strectherElement;
             return {
@@ -437,20 +443,22 @@ function handleInsertionSizeChange({ element, draggables, layout, getOptions }: 
   };
 }
 
-function calculateTranslations({ draggables, layout }: ContainerProps) {
+function calculateTranslations({ draggables, layout, getOptions, element }: ContainerProps) {
   let prevAddedIndex: number | null = null;
   let prevRemovedIndex: number | null = null;
   return function ({ dragResult: { addedIndex, removedIndex, elementSize } }: { dragResult: DragResult }) {
     if (addedIndex !== prevAddedIndex || removedIndex !== prevRemovedIndex) {
+      const { orientation, elementPaddings: pad } = getOptions();
+      const padding = pad ? (orientation === 'horizontal' ? pad[1] + pad[3] : pad[0] + pad[2]) : 0;
       for (let index = 0; index < draggables.length; index++) {
         if (index !== removedIndex) {
           const draggable = draggables[index];
           let translate = 0;
           if (removedIndex !== null && removedIndex < index) {
-            translate -= elementSize;
+            translate -= elementSize + padding;
           }
           if (addedIndex !== null && addedIndex <= index) {
-            translate += elementSize;
+            translate += elementSize + padding;
           }
           layout.setTranslation(draggable, translate);
         }
@@ -681,7 +689,7 @@ function Container(element: HTMLElement): (options?: ContainerOptions) => IConta
     }
 
     function setDraggables(draggables: HTMLElement[], element: HTMLElement) {
-      const newDraggables = wrapChildren(element);
+      const newDraggables = wrapChildren(element, getOptions().childrenSelector);
       for (let i = 0; i < newDraggables.length; i++) {
         draggables[i] = newDraggables[i];
       }
