@@ -8,8 +8,8 @@ const extensions = [
 module.exports = {
   input: 'index.ts',
   output: {
-    file: './dist/index.js',
-    format: 'umd',
+    file: './dist/index.mjs',
+    format: 'esm',
     sourcemap: false,
     name: 'SmoothDnD',
     exports: 'named',
