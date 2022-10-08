@@ -121,6 +121,14 @@ function getGhostElement(wrapperElement: HTMLElement, { x, y }: Position, contai
   Utils.addClass(ghost, container.getOptions().orientation || 'vertical');
   Utils.addClass(ghost, constants.ghostClass);
 
+  const srcCanvas = wrapperElement.querySelectorAll('canvas') as NodeListOf<HTMLCanvasElement>;
+  const dstCanvas = ghost.querySelectorAll('canvas') as NodeListOf<HTMLCanvasElement>;
+
+  for (let i = 0; i < srcCanvas.length; i++) {
+    const context = dstCanvas.item(i).getContext('2d');
+    context && context.drawImage(srcCanvas.item(i), 0, 0);
+  }
+
   return {
     ghost: ghost,
     centerDelta: { x: midX - x, y: midY - y },

@@ -196,29 +196,15 @@ export const getParent = (element: Element | null, selector: string) => {
 };
 
 export const hasClass = (element: HTMLElement, cls: string) => {
-  return (
-    element.className
-      .split(' ')
-      .map(p => p)
-      .indexOf(cls) > -1
-  );
+  return element.classList.contains(cls);
 };
 
 export const addClass = (element: Element | null | undefined, cls: string) => {
-  if (element) {
-    const classes = element.className.split(' ').filter(p => p);
-    if (classes.indexOf(cls) === -1) {
-      classes.unshift(cls);
-      element.className = classes.join(' ');
-    }
-  }
+    element && element.classList.add(cls);
 };
 
 export const removeClass = (element: HTMLElement, cls: string) => {
-  if (element) {
-    const classes = element.className.split(' ').filter(p => p && p !== cls);
-    element.className = classes.join(' ');
-  }
+    element && element.classList.remove(cls);
 };
 
 export const debounce = (fn: Function, delay: number, immediate: boolean) => {
@@ -253,13 +239,7 @@ export const addChildAt = (parent: HTMLElement, child: HTMLElement, index: numbe
 export const isMobile = () => {
   if (typeof window !== 'undefined') {
     if (
-      window.navigator.userAgent.match(/Android/i) ||
-      window.navigator.userAgent.match(/webOS/i) ||
-      window.navigator.userAgent.match(/iPhone/i) ||
-      window.navigator.userAgent.match(/iPad/i) ||
-      window.navigator.userAgent.match(/iPod/i) ||
-      window.navigator.userAgent.match(/BlackBerry/i) ||
-      window.navigator.userAgent.match(/Windows Phone/i)
+      window.navigator.userAgent.match(/Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i)
     ) {
       return true;
     } else {

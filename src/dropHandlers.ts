@@ -6,7 +6,7 @@ import { ContainerProps } from './interfaces';
 import { DropResult, OnDropCallback } from './exportTypes';
 
 export function domDropHandler({ element, draggables }: ContainerProps) {
-	return (dropResult: DropResult, onDrop: OnDropCallback ) => {
+	return (dropResult: DropResult, onDrop: OnDropCallback) => {
 		const { removedIndex, addedIndex, droppedElement } = dropResult as any;
 		let removedWrapper = null;
 		if (removedIndex !== null) {
@@ -30,6 +30,10 @@ export function domDropHandler({ element, draggables }: ContainerProps) {
 			onDrop(dropResult);
 		}
 	};
+}
+
+export function normalDropHandler() {
+	return (dropResult: DropResult, onDrop: OnDropCallback) => onDrop && onDrop(dropResult);
 }
 
 export function reactDropHandler() {

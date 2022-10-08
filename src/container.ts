@@ -1,6 +1,6 @@
 import { animationClass, containerClass, containerInstance, dropPlaceholderFlexContainerClass, dropPlaceholderInnerClass, dropPlaceholderWrapperClass, stretcherElementClass, stretcherElementInstance, translationValue, wrapperClass, dropPlaceholderDefaultClass } from './constants';
 import { defaultOptions } from './defaults';
-import { domDropHandler } from './dropHandlers';
+import { normalDropHandler } from './dropHandlers';
 import { ContainerOptions, SmoothDnD, SmoothDnDCreator, DropPlaceholderOptions } from './exportTypes';
 import { ContainerProps, DraggableInfo, DragInfo, DragResult, ElementX, IContainer, LayoutManager } from './interfaces';
 import layoutManager from './layoutManager';
@@ -155,7 +155,7 @@ function setTargetContainer(draggableInfo: DraggableInfo, element: HTMLElement, 
 
 function handleDrop({ element, draggables, layout, getOptions }: ContainerProps) {
   const draggablesReset = resetDraggables({ element, draggables, layout, getOptions });
-  const dropHandler = (smoothDnD.dropHandler || domDropHandler)({ element, draggables, layout, getOptions });
+  const dropHandler = (smoothDnD.dropHandler || normalDropHandler)({ element, draggables, layout, getOptions });
   return function (draggableInfo: DraggableInfo, { addedIndex, removedIndex }: DragResult, forDispose: boolean = false) {
     draggablesReset();
     // if drop zone is valid => complete drag else do nothing everything will be reverted by draggablesReset()
@@ -179,7 +179,8 @@ function getContainerProps(element: HTMLElement, getOptions: () => ContainerOpti
   const draggables = wrapChildren(element);
   const options = getOptions();
   // set flex classes before layout is inited for scroll listener
-  addClass(element, `${containerClass} ${options.orientation}`);
+  addClass(element, containerClass);
+  options.orientation && addClass(element, options.orientation);
   const layout = layoutManager(element, options.orientation!, options.animationDuration!);
   return {
     element,
@@ -793,7 +794,7 @@ const smoothDnD: SmoothDnDCreator = function (element: HTMLElement, options?: Co
 
 // wrap all draggables by default 
 // in react,vue,angular this value will be set to false
-smoothDnD.wrapChild = true;
+smoothDnD.wrapChild = false;
 smoothDnD.cancelDrag = function () {
   Mediator.cancelDrag();
 }
