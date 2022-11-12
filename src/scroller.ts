@@ -200,15 +200,11 @@ function setScrollParams(animatorInfos: ScrollerAnimator[], position: Position) 
 }
 
 function getTopmostScrollAnimator(animatorInfos: ScrollerAnimator[], position: Position): ScrollerAnimator | null {
-	let current = document.elementFromPoint(position.x, position.y);
-
-	while (current) {
-		const scrollAnimator = animatorInfos.find(p => p.scrollerElement === current);
-		if (scrollAnimator) {
-			return scrollAnimator;
+	for (const info of animatorInfos) {
+		const rect = info.getRect();
+		if (position.x >= rect.left && position.x <= rect.right && position.y >= rect.top && position.y <= rect.bottom) {
+			return info;
 		}
-
-		current = current.parentElement;
 	}
 
 	return null;

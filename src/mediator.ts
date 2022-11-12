@@ -2,14 +2,9 @@ import * as constants from './constants';
 import { defaultOptions } from './defaults';
 import dragScroller from './scroller';
 import { Axis, DraggableInfo, ElementX, GhostInfo, IContainer, MousePosition, Position, TopLeft, Orientation } from './interfaces';
-import './polyfills';
 import { addCursorStyleToBody, addStyleToHead, removeStyle } from './styles';
 import * as Utils from './utils';
 import { ContainerOptions } from './exportTypes';
-
-const grabEvents = ['mousedown', 'touchstart'];
-const moveEvents = ['mousemove', 'touchmove'];
-const releaseEvents = ['mouseup', 'touchend'];
 
 let dragListeningContainers: IContainer[] = null!;
 let grabbedElement: ElementX | null = null;
@@ -31,38 +26,37 @@ const isMobile = Utils.isMobile();
 
 function listenEvents() {
   if (typeof window !== 'undefined') {
-    addGrabListeners();
+    addGrabListeners(onMouseDown);
   }
 }
 
-function addGrabListeners() {
-  grabEvents.forEach(e => {
-    window.document.addEventListener(e, onMouseDown as any, { passive: false } as any);
-  });
+type PointerEventListener = (e: MouseEvent | TouchEvent) => any;
+
+function addGrabListeners(listener: PointerEventListener) {
+  window.addEventListener('mousedown', listener, { passive: false });
+  window.addEventListener('touchstart', listener, { passive: false });
 }
 
-function addMoveListeners() {
-  moveEvents.forEach(e => {
-    window.document.addEventListener(e, onMouseMove as any, { passive: false } as any);
-  });
+function addMoveListeners(listener: PointerEventListener) {
+  window.addEventListener('mousemove', listener, { passive: false });
+  window.addEventListener('touchmove', listener, { passive: false });
 }
 
-function removeMoveListeners() {
-  moveEvents.forEach(e => {
-    window.document.removeEventListener(e, onMouseMove as any, { passive: false } as any);
-  });
+function removeMoveListeners(listener: PointerEventListener) {
+  window.removeEventListener('mousemove', listener);
+  window.removeEventListener('touchmove', listener);
 }
 
-function addReleaseListeners() {
-  releaseEvents.forEach(e => {
-    window.document.addEventListener(e, onMouseUp, { passive: false });
-  });
+function addReleaseListeners(listener: PointerEventListener) {
+  window.addEventListener('mouseup', listener, { passive: false });
+  window.addEventListener('touchend', listener, { passive: false });
+  window.addEventListener('touchcancel', listener, { passive: false });
 }
 
-function removeReleaseListeners() {
-  releaseEvents.forEach(e => {
-    window.document.removeEventListener(e, onMouseUp as any, { passive: false } as any);
-  });
+function removeReleaseListeners(listener: PointerEventListener) {
+  window.removeEventListener('mouseup', listener);
+  window.removeEventListener('touchend', listener);
+  window.removeEventListener('touchcancel', listener);
 }
 
 function getGhostParent() {
@@ -91,7 +85,7 @@ function getGhostElement(wrapperElement: HTMLElement, { x, y }: Position, contai
   ghost.style.position = 'fixed';
   ghost.style.top = '0px';
   ghost.style.left = '0px';
-  ghost.style.transform = null;
+  ghost.style.transform = '';
   ghost.style.removeProperty('transform');
 
   if (container.shouldUseTransformForGhost()) {
@@ -111,7 +105,7 @@ function getGhostElement(wrapperElement: HTMLElement, { x, y }: Position, contai
 
   if (container.getOptions().dragClass) {
     setTimeout(() => {
-      Utils.addClass(ghost.firstElementChild as HTMLElement, container.getOptions().dragClass!);
+      Utils.addClass(ghost.firstElementChild, container.getOptions().dragClass!);
       const dragCursor = window.getComputedStyle(ghost.firstElementChild!).cursor;
       cursorStyleElement = addCursorStyleToBody(dragCursor!);
     });
@@ -211,8 +205,8 @@ function handleDropAnimation(callback: Function) {
   }
 
   if (draggableInfo.targetElement) {
-    const container = containers.filter(p => p.element === draggableInfo.targetElement)[0];
-    if (shouldAnimateDrop(container.getOptions())) {
+    const container = containers.find(p => p.element === draggableInfo.targetElement);
+    if (container && shouldAnimateDrop(container.getOptions())) {
       const dragResult = container.getDragResult()!;
       animateGhostToPosition(
         dragResult.shadowBeginEnd.rect!,
@@ -223,7 +217,7 @@ function handleDropAnimation(callback: Function) {
       endDrop();
     }
   } else {
-    const container = containers.filter(p => p === draggableInfo.container)[0];
+    const container = containers.find(p => p === draggableInfo.container);
     if (container) {
       const { behaviour, removeOnDropOut } = container.getOptions();
       if ((behaviour === 'move' || behaviour === 'contain') && (isCanceling || !removeOnDropOut) && container.getDragResult()) {
@@ -274,21 +268,21 @@ function handleDropAnimation(callback: Function) {
 }
 
 const handleDragStartConditions = (function handleDragStartConditions() {
-  let startEvent: { clientX: number; clientY: number };
+  let startEvent: MousePosition;
   let delay: number;
   let clb: Function;
   let timer: any = null!;
   const moveThreshold = 1;
   const maxMoveInDelay = 5;
 
-  function onMove(event: MouseEvent & TouchEvent) {
-    const { clientX: currentX, clientY: currentY } = getPointerEvent(event);
+  function onMove(event: MouseEvent | TouchEvent) {
+    const { clientX, clientY } = getMousePosition(event);
     if (!delay) {
-      if (Math.abs(startEvent.clientX - currentX) > moveThreshold || Math.abs(startEvent.clientY - currentY) > moveThreshold) {
+      if (Math.abs(startEvent.clientX - clientX) > moveThreshold || Math.abs(startEvent.clientY - clientY) > moveThreshold) {
         return callCallback();
       }
     } else {
-      if (Math.abs(startEvent.clientX - currentX) > maxMoveInDelay || Math.abs(startEvent.clientY - currentY) > maxMoveInDelay) {
+      if (Math.abs(startEvent.clientX - clientX) > maxMoveInDelay || Math.abs(startEvent.clientY - clientY) > maxMoveInDelay) {
         deregisterEvent();
       }
     }
@@ -297,37 +291,22 @@ const handleDragStartConditions = (function handleDragStartConditions() {
   function onUp() {
     deregisterEvent();
   }
-  function onHTMLDrag() {
-    deregisterEvent();
-  }
 
   function registerEvents() {
     if (delay) {
       timer = setTimeout(callCallback, delay);
     }
 
-    moveEvents.forEach(e => window.document.addEventListener(e, onMove as any), {
-      passive: false,
-    });
-    releaseEvents.forEach(e => window.document.addEventListener(e, onUp), {
-      passive: false,
-    });
-    window.document.addEventListener('drag', onHTMLDrag, {
-      passive: false,
-    });
+    addMoveListeners(onMove);
+    addReleaseListeners(onUp);
+    window.addEventListener('drag', onUp, { passive: false });
   }
 
   function deregisterEvent() {
     clearTimeout(timer);
-    moveEvents.forEach(e => window.document.removeEventListener(e, onMove as any), {
-      passive: false,
-    });
-    releaseEvents.forEach(e => window.document.removeEventListener(e, onUp), {
-      passive: false,
-    });
-    window.document.removeEventListener('drag', onHTMLDrag, {
-      passive: false,
-    } as any);
+    removeMoveListeners(onMove);
+    removeReleaseListeners(onUp);
+    window.removeEventListener('drag', onUp);
   }
 
   function callCallback() {
@@ -336,8 +315,8 @@ const handleDragStartConditions = (function handleDragStartConditions() {
     clb();
   }
 
-  return function (_startEvent: MouseEvent & TouchEvent, _delay: number, _clb: Function) {
-    startEvent = getPointerEvent(_startEvent);
+  return function (_startEvent: MouseEvent | TouchEvent, _delay: number, _clb: Function) {
+    startEvent = getMousePosition(_startEvent);
     delay = typeof _delay === 'number' ? _delay : isMobile ? 200 : 0;
     clb = _clb;
 
@@ -345,53 +324,53 @@ const handleDragStartConditions = (function handleDragStartConditions() {
   };
 })();
 
-function onMouseDown(event: MouseEvent & TouchEvent) {
-  const e = getPointerEvent(event);
-  if (!isDragging && (e.button === undefined || e.button === 0)) {
+function onMouseDown(e: MouseEvent | TouchEvent) {
+  if (!isDragging && ('touches' in e || e.button === 0)) {
     grabbedElement = Utils.getParent(e.target as Element, '.' + constants.wrapperClass) as ElementX;
     if (grabbedElement) {
       const containerElement = Utils.getParent(grabbedElement, '.' + constants.containerClass);
-      const container = containers.filter(p => p.element === containerElement)[0];
+      const container = containers.find(p => p.element === containerElement);
+      if (!container) {
+        return;
+      }
+
       const { dragHandleSelector, nonDragAreaSelector, disabled } = container.getOptions();
 
-      let startDrag = !disabled;
+      if (disabled) {
+        return;
+      }
+
       if (dragHandleSelector && !Utils.getParent(e.target as Element, dragHandleSelector)) {
-        startDrag = false;
+        return;
       }
 
       if (nonDragAreaSelector && Utils.getParent(e.target as Element, nonDragAreaSelector)) {
-        startDrag = false;
+        return;
       }
 
-      if (startDrag) {
-        container.layout.invalidate();
-        Utils.addClass(window.document.body, constants.disbaleTouchActions);
-        Utils.addClass(window.document.body, constants.noUserSelectClass);
+      container.layout.invalidate();
+      Utils.addClass(window.document.body, constants.disbaleTouchActions);
+      Utils.addClass(window.document.body, constants.noUserSelectClass);
 
-        const onMouseUp = () => {
-          Utils.removeClass(window.document.body, constants.disbaleTouchActions);
-          Utils.removeClass(window.document.body, constants.noUserSelectClass);
-          window.document.removeEventListener('mouseup', onMouseUp);
-        }
-
-        releaseEvents.forEach(e => {
-          window.document.addEventListener(e, onMouseUp, { passive: false });
-        });
+      const onUp = () => {
+        Utils.removeClass(window.document.body, constants.disbaleTouchActions);
+        Utils.removeClass(window.document.body, constants.noUserSelectClass);
+        removeReleaseListeners(onUp);
       }
 
-      if (startDrag) {
-        handleDragStartConditions(e, container.getOptions().dragBeginDelay!, () => {
-          Utils.clearSelection();
-          initiateDrag(e, Utils.getElementCursor(event.target as Element)!);
-          addMoveListeners();
-          addReleaseListeners();
-        });
-      }
+      addReleaseListeners(onUp);
+
+      handleDragStartConditions(e, container.getOptions().dragBeginDelay!, () => {
+        Utils.clearSelection();
+        initiateDrag(getMousePosition(e), Utils.getElementCursor(e.target as Element)!);
+        addMoveListeners(onMouseMove);
+        addReleaseListeners(onMouseUp);
+      });
     }
   }
 }
 
-function handleMouseMoveForContainer({ clientX, clientY }: MouseEvent & TouchEvent, orientation: Orientation = 'vertical') {
+function handleMouseMoveForContainer({ clientX, clientY }: MousePosition, orientation: Orientation = 'vertical') {
   const beginEnd = draggableInfo.container.layout.getBeginEndOfContainerVisibleRect();
   let mousePos;
   let axis: 'x' | 'y';
@@ -427,33 +406,33 @@ function handleMouseMoveForContainer({ clientX, clientY }: MouseEvent & TouchEve
   }
 }
 
-function onMouseMove(event: MouseEvent & TouchEvent) {
+function onMouseMove(event: MouseEvent | TouchEvent) {
   event.preventDefault();
-  const e = getPointerEvent(event);
+  const p = getMousePosition(event);
   if (!draggableInfo) {
-    initiateDrag(e, Utils.getElementCursor(event.target as Element)!);
+    initiateDrag(p, Utils.getElementCursor(event.target as Element)!);
   } else {
     const containerOptions = draggableInfo.container.getOptions();
     const isContainDrag = containerOptions.behaviour === 'contain';
     if (isContainDrag) {
-      handleMouseMoveForContainer(e, containerOptions.orientation);
+      handleMouseMoveForContainer(p, containerOptions.orientation);
     } else if (sourceContainerLockAxis) {
       if (sourceContainerLockAxis === 'y') {
-        ghostInfo.topLeft.y = e.clientY + ghostInfo.positionDelta.top;
-        draggableInfo.position.y = e.clientY + ghostInfo.centerDelta.y;
-        draggableInfo.mousePosition.y = e.clientY;
+        ghostInfo.topLeft.y = p.clientY + ghostInfo.positionDelta.top;
+        draggableInfo.position.y = p.clientY + ghostInfo.centerDelta.y;
+        draggableInfo.mousePosition.y = p.clientY;
       } else if (sourceContainerLockAxis === 'x') {
-        ghostInfo.topLeft.x = e.clientX + ghostInfo.positionDelta.left;
-        draggableInfo.position.x = e.clientX + ghostInfo.centerDelta.x;
-        draggableInfo.mousePosition.x = e.clientX;
+        ghostInfo.topLeft.x = p.clientX + ghostInfo.positionDelta.left;
+        draggableInfo.position.x = p.clientX + ghostInfo.centerDelta.x;
+        draggableInfo.mousePosition.x = p.clientX;
       }
     } else {
-      ghostInfo.topLeft.x = e.clientX + ghostInfo.positionDelta.left;
-      ghostInfo.topLeft.y = e.clientY + ghostInfo.positionDelta.top;
-      draggableInfo.position.x = e.clientX + ghostInfo.centerDelta.x;
-      draggableInfo.position.y = e.clientY + ghostInfo.centerDelta.y;
-      draggableInfo.mousePosition.x = e.clientX;
-      draggableInfo.mousePosition.y = e.clientY;
+      ghostInfo.topLeft.x = p.clientX + ghostInfo.positionDelta.left;
+      ghostInfo.topLeft.y = p.clientY + ghostInfo.positionDelta.top;
+      draggableInfo.position.x = p.clientX + ghostInfo.centerDelta.x;
+      draggableInfo.position.y = p.clientY + ghostInfo.centerDelta.y;
+      draggableInfo.mousePosition.x = p.clientX;
+      draggableInfo.mousePosition.y = p.clientY;
     }
 
     translateGhost();
@@ -480,8 +459,8 @@ function handleMissedDragFrame() {
 }
 
 function onMouseUp() {
-  removeMoveListeners();
-  removeReleaseListeners();
+  removeMoveListeners(onMouseMove);
+  removeReleaseListeners(onMouseUp);
   handleScroll({ reset: true });
 
   if (cursorStyleElement) {
@@ -493,6 +472,10 @@ function onMouseUp() {
     handleMissedDragFrame();
     dropAnimationStarted = true;
     handleDropAnimation(() => {
+      if (!draggableInfo) {
+        return;
+      }
+
       isDragging = false; // 
       fireOnDragStartEnd(false);
       const containers = dragListeningContainers || [];
@@ -514,8 +497,8 @@ function onMouseUp() {
   }
 }
 
-function getPointerEvent(e: TouchEvent & MouseEvent): MouseEvent & TouchEvent {
-  return e.touches ? e.touches[0] : e as any;
+function getMousePosition(e: TouchEvent | MouseEvent): MousePosition {
+  return 'touches' in e ? e.touches[0] : e;
 }
 
 function handleDragImmediate(draggableInfo: DraggableInfo, dragListeningContainers: IContainer[]) {
@@ -581,10 +564,20 @@ function fireOnDragStartEnd(isStart: boolean) {
   });
 }
 
+function sortContainers(a: IContainer, b: IContainer) {
+  if (a.element.contains(b.element)) {
+    return 1;
+  }
+  if (b.element.contains(a.element)) {
+    return -1;
+  }
+  return 0;
+}
+
 function initiateDrag(position: MousePosition, cursor: string) {
   if (grabbedElement !== null) {
     isDragging = true;
-    const container = containers.find(p => p.element.contains(grabbedElement)) as IContainer;
+    const container = containers.find(p => p.element.contains(grabbedElement))!;
     container.setDraggables();
     sourceContainerLockAxis = container.getOptions().lockAxis ? container.getOptions().lockAxis!.toLowerCase() as Axis : null;
 
@@ -604,7 +597,9 @@ function initiateDrag(position: MousePosition, cursor: string) {
       y: position.clientY,
     };
 
-    dragListeningContainers = containers.filter(p => p.isDragRelevant(container, draggableInfo.payload));
+    dragListeningContainers = containers
+      .filter(p => p.isDragRelevant(container, draggableInfo.payload))
+      .sort(sortContainers);
     draggableInfo.relevantContainers = dragListeningContainers;
     handleDrag = dragHandler(dragListeningContainers);
     if (handleScroll) {

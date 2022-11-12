@@ -10,7 +10,7 @@ module.exports = {
   output: {
     file: './dist/index.mjs',
     format: 'esm',
-    sourcemap: false,
+    sourcemap: true,
     name: 'SmoothDnD',
     exports: 'named',
   },

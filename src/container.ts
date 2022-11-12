@@ -5,7 +5,7 @@ import { ContainerOptions, SmoothDnD, SmoothDnDCreator, DropPlaceholderOptions }
 import { ContainerProps, DraggableInfo, DragInfo, DragResult, ElementX, IContainer, LayoutManager } from './interfaces';
 import layoutManager from './layoutManager';
 import Mediator from './mediator';
-import { addClass, getParent, getParentRelevantContainerElement, hasClass, listenScrollParent, removeClass } from './utils';
+import { addClass, getParent, hasClass, listenScrollParent, removeClass } from './utils';
 
 function setAnimation(element: HTMLElement, add: boolean, animationDuration = defaultOptions.animationDuration) {
   if (add) {
@@ -169,7 +169,6 @@ function handleDrop({ element, draggables, layout, getOptions }: ContainerProps)
           removedIndex,
           addedIndex: actualAddIndex,
           payload: draggableInfo.payload,
-          // droppedElement: draggableInfo.element.firstElementChild,
         };
         dropHandler(dropHandlerParams, getOptions().onDrop);
       }
@@ -213,20 +212,11 @@ function setRemovedItemVisibilty({ draggables, layout }: ContainerProps) {
 }
 
 function getPosition({ element, layout }: ContainerProps) {
-  return ({ draggableInfo }: DragInfo) => {
-    let hitElement = document.elementFromPoint(draggableInfo.position.x, draggableInfo.position.y);
-
-    // TODO: if center is out of bounds use mouse position for hittest
-    // if (!hitElement) {
-    //   hitElement = document.elementFromPoint(draggableInfo.mousePosition.x, draggableInfo.mousePosition.y);
-    // }
-
-    if (hitElement) {
-      const container: IContainer = getParentRelevantContainerElement(hitElement, draggableInfo.relevantContainers);
-      if (container && container.element === element) {
-        return {
-          pos: layout.getPosition(draggableInfo.position),
-        }
+  return ({ draggableInfo: { relevantContainers, position } }: DragInfo) => {
+    const container = relevantContainers.find(c => c.element === element);
+    if (container && container.layout.isInVisibleRect(position.x, position.y)) {
+      return {
+        pos: layout.getPosition(position),
       }
     }
 
@@ -307,7 +297,7 @@ function drawDropPlaceholder({ layout, element, getOptions }: ContainerProps) {
   return ({ dragResult: { elementSize, shadowBeginEnd, addedIndex, dropPlaceholderContainer } }: DragInfo) => {
     const options = getOptions();    
     if (options.dropPlaceholder) {
-      const { animationDuration, className, showOnTop } = typeof options.dropPlaceholder === 'boolean' ? {} as any as DropPlaceholderOptions : options.dropPlaceholder as DropPlaceholderOptions;
+      const { animationDuration, className, showOnTop } = options.dropPlaceholder === true ? <DropPlaceholderOptions>{} : options.dropPlaceholder;
       if (addedIndex !== null) {
         if (!dropPlaceholderContainer) {
           const innerElement = document.createElement('div');

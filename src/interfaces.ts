@@ -12,7 +12,7 @@ export interface Rect {
 export type OffsetSize = { offsetWidth: number; offsetHeight: number }
 
 export type Axis = 'x' | 'y';
-export enum ScrollAxis {
+export const enum ScrollAxis {
   x = 'x',
   y = 'y',
   xy = 'xy'

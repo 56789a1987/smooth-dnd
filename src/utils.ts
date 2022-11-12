@@ -1,5 +1,4 @@
 import { Rect, Axis, ElementX, ScrollAxis, IContainer } from './interfaces';
-import { containerInstance } from './constants';
 
 export const getIntersection = (rect1: Rect, rect2: Rect) => {
   return {
@@ -52,12 +51,12 @@ export const getContainerRect = (element: HTMLElement): Rect => {
 
 export const getScrollingAxis = (element: HTMLElement): ScrollAxis | null => {
   const style = window.getComputedStyle(element);
-  const overflow = style['overflow'];
+  const overflow = style.overflow;
   const general = overflow === 'auto' || overflow === 'scroll';
   if (general) return ScrollAxis.xy;
-  const overFlowX = style[`overflow-x` as any];
+  const overFlowX = style.overflowX;
   const xScroll = overFlowX === 'auto' || overFlowX === 'scroll';
-  const overFlowY = style[`overflow-y` as any];
+  const overFlowY = style.overflowY;
   const yScroll = overFlowY === 'auto' || overFlowY === 'scroll';
 
   if (xScroll && yScroll) return ScrollAxis.xy;
@@ -68,8 +67,8 @@ export const getScrollingAxis = (element: HTMLElement): ScrollAxis | null => {
 
 export const isScrolling = (element: HTMLElement, axis: Axis) => {
   const style = window.getComputedStyle(element);
-  const overflow = style['overflow'];
-  const overFlowAxis = style[`overflow-${axis}` as any];
+  const overflow = style.overflow;
+  const overFlowAxis = axis === 'x' ? style.overflowX : style.overflowY;
   const general = overflow === 'auto' || overflow === 'scroll';
   const dimensionScroll = overFlowAxis === 'auto' || overFlowAxis === 'scroll';
   return general || dimensionScroll;
@@ -77,8 +76,8 @@ export const isScrolling = (element: HTMLElement, axis: Axis) => {
 
 export const isScrollingOrHidden = (element: HTMLElement, axis: Axis) => {
   const style = window.getComputedStyle(element);
-  const overflow = style['overflow'];
-  const overFlowAxis = style[`overflow-${axis}` as any];
+  const overflow = style.overflow;
+  const overFlowAxis = axis === 'x' ? style.overflowX : style.overflowY;
   const general = overflow === 'auto' || overflow === 'scroll' || overflow === 'hidden';
   const dimensionScroll = overFlowAxis === 'auto' || overFlowAxis === 'scroll' || overFlowAxis === 'hidden';
   return general || dimensionScroll;
@@ -100,7 +99,7 @@ export const getVisibleRect = (element: HTMLElement, elementRect: Rect) => {
   let currentElement = element;
   let rect = elementRect || getContainerRect(element);
   currentElement = element.parentElement!;
-  while (currentElement) {
+  while (currentElement && currentElement !== document.body) {
     if (hasBiggerChild(currentElement, 'x') && isScrollingOrHidden(currentElement, 'x')) {
       rect = getIntersectionOnAxis(rect, currentElement.getBoundingClientRect(), 'x');
     }
@@ -114,22 +113,6 @@ export const getVisibleRect = (element: HTMLElement, elementRect: Rect) => {
 
   return rect;
 };
-
-export const getParentRelevantContainerElement = (element: Element, relevantContainers: IContainer[]) => {
-  let current: ElementX = element as ElementX;
-
-  while (current) {
-    if ((current as ElementX)[containerInstance]) {
-      const container = current[containerInstance];
-      if (relevantContainers.some(p => p === container)) {
-        return container;
-      }
-    }
-    current = current.parentElement as ElementX;
-  }
-
-  return null;
-}
 
 export const listenScrollParent = (element: HTMLElement, clb: () => void) => {
   let scrollers: HTMLElement[] = [];
@@ -250,17 +233,15 @@ export const isMobile = () => {
 };
 
 export const clearSelection = () => {
-  if (window.getSelection) {
-    if (window.getSelection().empty) {
+  const selection = window.getSelection();
+  if (selection) {
+    if (typeof selection.empty === 'function') {
       // Chrome
-      window.getSelection().empty();
-    } else if (window.getSelection().removeAllRanges) {
+      selection.empty();
+    } else if (typeof selection.removeAllRanges === 'function') {
       // Firefox
-      window.getSelection().removeAllRanges();
+      selection.removeAllRanges();
     }
-  } else if ((window.document as any).selection) {
-    // IE?
-    (window.document as any).selection.empty();
   }
 };
 

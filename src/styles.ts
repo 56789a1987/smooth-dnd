@@ -102,15 +102,10 @@ function convertToCssString(css: Dictionary): string {
 function addStyleToHead() {
 	if (typeof (window) !== 'undefined') {
 		const head = window.document.head || window.document.getElementsByTagName("head")[0];
-		const style = window.document.createElement("style") as any;
+		const style = window.document.createElement("style");
 		style.id = 'smooth-dnd-style-definitions';
 		const cssString = convertToCssString(css);
-		style.type = 'text/css';
-		if (style.styleSheet) {
-			style.styleSheet.cssText = cssString;
-		} else {
-			style.appendChild(window.document.createTextNode(cssString));
-		}
+		style.appendChild(window.document.createTextNode(cssString));
 
 		head.appendChild(style);
 	}
@@ -119,18 +114,13 @@ function addStyleToHead() {
 function addCursorStyleToBody(cursor: string) {
 	if (cursor && typeof (window) !== 'undefined') {
 		const head = window.document.head || window.document.getElementsByTagName("head")[0];
-		const style = window.document.createElement("style") as any;
+		const style = window.document.createElement("style");
 		const cssString = convertToCssString({
 			'body *': {
 				cursor: `${cursor} !important`
 			}
 		});
-		style.type = 'text/css';
-		if (style.styleSheet) {
-			style.styleSheet.cssText = cssString;
-		} else {
-			style.appendChild(window.document.createTextNode(cssString));
-		}
+		style.appendChild(window.document.createTextNode(cssString));
 
 		head.appendChild(style);
 
