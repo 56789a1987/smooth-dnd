@@ -130,7 +130,7 @@ function addCursorStyleToBody(cursor: string) {
 	return null;
 }
 
-function removeStyle(styleElement: HTMLStyleElement) {
+function removeStyle(styleElement: HTMLStyleElement | null) {
 	if (styleElement && typeof (window) !== 'undefined') {
 		const head = window.document.head || window.document.getElementsByTagName("head")[0];
 		head.removeChild(styleElement);

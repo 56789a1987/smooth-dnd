@@ -103,12 +103,10 @@ function getGhostElement(wrapperElement: HTMLElement, { x, y }: Position, contai
   ghost.style.pointerEvents = 'none';
   ghost.style.userSelect = 'none';
 
+  removeStyle(cursorStyleElement);
   if (container.getOptions().dragClass) {
-    setTimeout(() => {
-      Utils.addClass(ghost.firstElementChild, container.getOptions().dragClass!);
-      const dragCursor = window.getComputedStyle(ghost.firstElementChild!).cursor;
-      cursorStyleElement = addCursorStyleToBody(dragCursor!);
-    });
+    Utils.addClass(ghost.firstElementChild, container.getOptions().dragClass!);
+    cursorStyleElement = addCursorStyleToBody(Utils.getElementCursor(ghost.firstElementChild)!);
   } else {
     cursorStyleElement = addCursorStyleToBody(cursor);
   }
@@ -523,15 +521,19 @@ function handleDragImmediate(draggableInfo: DraggableInfo, dragListeningContaine
 function dragHandler(dragListeningContainers: IContainer[]): (draggableInfo: DraggableInfo) => boolean {
   let targetContainers = dragListeningContainers;
   let animationFrame: number | null = null;
+  function handler(draggableInfo: DraggableInfo) {
+    if (isDragging && !dropAnimationStarted) {
+      handleDragImmediate(draggableInfo, targetContainers);
+      handleScroll({ draggableInfo });
+    }
+  }
   return function (draggableInfo: DraggableInfo): boolean {
     if (animationFrame === null && isDragging && !dropAnimationStarted) {
+      handler(draggableInfo);
       animationFrame = requestAnimationFrame(() => {
-        if (isDragging && !dropAnimationStarted) {
-          handleDragImmediate(draggableInfo, targetContainers);
-          handleScroll({ draggableInfo });
-        }
+        handler(draggableInfo);
         animationFrame = null;
-      })
+      });
       return true;
     }
     return false;
