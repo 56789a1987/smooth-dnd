@@ -103,11 +103,14 @@ function getGhostElement(wrapperElement: HTMLElement, { x, y }: Position, contai
   ghost.style.pointerEvents = 'none';
   ghost.style.userSelect = 'none';
 
-  removeStyle(cursorStyleElement);
   if (container.getOptions().dragClass) {
     Utils.addClass(ghost.firstElementChild, container.getOptions().dragClass!);
-    cursorStyleElement = addCursorStyleToBody(Utils.getElementCursor(ghost.firstElementChild)!);
+    setTimeout(() => {
+      removeStyle(cursorStyleElement);
+      cursorStyleElement = addCursorStyleToBody(Utils.getElementCursor(ghost.firstElementChild)!);
+    });
   } else {
+    removeStyle(cursorStyleElement);
     cursorStyleElement = addCursorStyleToBody(cursor);
   }
   Utils.addClass(ghost, container.getOptions().orientation || 'vertical');
@@ -472,6 +475,11 @@ function onMouseUp() {
     handleDropAnimation(() => {
       if (!draggableInfo) {
         return;
+      }
+
+      if (cursorStyleElement) {
+        removeStyle(cursorStyleElement);
+        cursorStyleElement = null;
       }
 
       isDragging = false; // 
