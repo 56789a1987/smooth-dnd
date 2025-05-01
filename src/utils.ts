@@ -219,19 +219,6 @@ export const addChildAt = (parent: HTMLElement, child: HTMLElement, index: numbe
   }
 };
 
-export const isMobile = () => {
-  if (typeof window !== 'undefined') {
-    if (
-      window.navigator.userAgent.match(/Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i)
-    ) {
-      return true;
-    } else {
-      return false;
-    }
-  }
-  return false;
-};
-
 export const clearSelection = () => {
   const selection = window.getSelection();
   if (selection) {

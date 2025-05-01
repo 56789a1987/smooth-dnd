@@ -22,8 +22,6 @@ let cursorStyleElement: HTMLStyleElement | null = null;
 
 const containerRectableWatcher = watchRectangles();
 
-const isMobile = Utils.isMobile();
-
 function listenEvents() {
   if (typeof window !== 'undefined') {
     addGrabListeners(onMouseDown);
@@ -95,8 +93,8 @@ function getGhostElement(wrapperElement: HTMLElement, { x, y }: Position, contai
     ghost.style.left = `${left}px`;
   }
 
-  ghost.style.width = (right - left) + 'px';
-  ghost.style.height = (bottom - top) + 'px';
+  ghost.style.width = `${right - left}px`;
+  ghost.style.height = `${bottom - top}px`;
   ghost.style.overflow = 'visible';
   ghost.style.transition = null!;
   ghost.style.removeProperty('transition');
@@ -116,8 +114,8 @@ function getGhostElement(wrapperElement: HTMLElement, { x, y }: Position, contai
   Utils.addClass(ghost, container.getOptions().orientation || 'vertical');
   Utils.addClass(ghost, constants.ghostClass);
 
-  const srcCanvas = wrapperElement.querySelectorAll('canvas') as NodeListOf<HTMLCanvasElement>;
-  const dstCanvas = ghost.querySelectorAll('canvas') as NodeListOf<HTMLCanvasElement>;
+  const srcCanvas = wrapperElement.querySelectorAll('canvas');
+  const dstCanvas = ghost.querySelectorAll('canvas');
 
   for (let i = 0; i < srcCanvas.length; i++) {
     const context = dstCanvas.item(i).getContext('2d');
@@ -318,7 +316,7 @@ const handleDragStartConditions = (function handleDragStartConditions() {
 
   return function (_startEvent: MouseEvent | TouchEvent, _delay: number, _clb: Function) {
     startEvent = getMousePosition(_startEvent);
-    delay = typeof _delay === 'number' ? _delay : isMobile ? 200 : 0;
+    delay = typeof _delay === 'number' ? _delay : ('touches' in _startEvent) ? 200 : 0;
     clb = _clb;
 
     registerEvents();
@@ -504,7 +502,7 @@ function onMouseUp() {
 }
 
 function getMousePosition(e: TouchEvent | MouseEvent): MousePosition {
-  return 'touches' in e ? e.touches[0] : e;
+  return 'touches' in e ? e.touches.item(0)! : e;
 }
 
 function handleDragImmediate(draggableInfo: DraggableInfo, dragListeningContainers: IContainer[]) {
