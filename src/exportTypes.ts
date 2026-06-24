@@ -55,7 +55,7 @@ export interface ContainerOptions {
 	onDrop?: OnDropCallback;
 	getChildPayload?: (index: number) => any;
 	shouldAnimateDrop?: (sourceContainerOptions: ContainerOptions, payload: any) => boolean;
-	shouldAcceptDrop?: (sourceContainerOptions: ContainerOptions, payload: any) => boolean;
+	shouldAcceptDrop?: (sourceContainerOptions: ContainerOptions, payload: any, isSourceContainer: boolean) => boolean;
 	onDragEnter?: () => void;
 	onDragLeave?: () => void;
 	onDropReady?: OnDropReadyCallback;

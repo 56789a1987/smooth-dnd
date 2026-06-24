@@ -24,19 +24,26 @@ function isDragRelevant({ element, getOptions }: ContainerProps) {
     if (options.disabled) {
       return false;
     }
-    if (options.shouldAcceptDrop) {
-      return options.shouldAcceptDrop(sourceContainer.getOptions(), payload);
-    }
+
     const sourceOptions = sourceContainer.getOptions();
-    if (options.behaviour === 'copy') return false;
+    if (options.shouldAcceptDrop) {
+      return options.shouldAcceptDrop(sourceOptions, payload, sourceContainer.element === element);
+    }
+    if (options.behaviour === 'copy') {
+      return false;
+    }
 
     const parentWrapper = getParent(element, '.' + wrapperClass);
     if (parentWrapper === sourceContainer.element) {
       return false;
     }
 
-    if (sourceContainer.element === element) return true;
-    if (sourceOptions.groupName && sourceOptions.groupName === options.groupName) return true;
+    if (sourceContainer.element === element) {
+      return true;
+    }
+    if (sourceOptions.groupName && sourceOptions.groupName === options.groupName) {
+      return true;
+    }
 
     return false;
   };
